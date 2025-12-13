@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>speak-it - テキスト読み上げ</title>
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>speak-it</h1>
+      <p class="subtitle">テキストを貼り付けて読み上げ</p>
+    </header>
+
+    <main>
+      <div class="input-section">
+        <textarea
+          id="text-input"
+          placeholder="ここにテキストを貼り付けてください..."
+          rows="10"
+        ></textarea>
+        <div class="char-count">
+          <span id="char-count">0</span> 文字
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <label for="engine-select">エンジン</label>
+          <select id="engine-select">
+            <option value="google">Google Cloud TTS</option>
+            <option value="browser">ブラウザ内蔵</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="voice-select">音声</label>
+          <select id="voice-select"></select>
+        </div>
+
+        <div class="control-group">
+          <label for="rate-slider">速度: <span id="rate-value">1.0</span>x</label>
+          <input type="range" id="rate-slider" min="0.5" max="2" step="0.1" value="1">
+        </div>
+
+        <div class="control-group">
+          <label for="volume-slider">音量: <span id="volume-value">100</span>%</label>
+          <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="1">
+        </div>
+      </div>
+
+      <div class="buttons">
+        <button id="play-btn" class="btn btn-primary">
+          ▶ 読み上げ
+        </button>
+        <button id="pause-btn" class="btn btn-secondary" disabled>
+          ⏸ 一時停止
+        </button>
+        <button id="stop-btn" class="btn btn-danger" disabled>
+          ⏹ 停止
+        </button>
+      </div>
+
+      <div id="status" class="status"></div>
+      <audio id="audio-player" style="display:none;"></audio>
+    </main>
+
+    <footer>
+      <p><span id="browser-support"></span></p>
+    </footer>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

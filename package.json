@@ -1,0 +1,17 @@
+{
+  "name": "speak-it",
+  "version": "1.0.0",
+  "description": "Text-to-Speech Web App using Web Speech API",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": ["tts", "text-to-speech", "web-speech-api"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vite": "^7.2.7"
+  }
+}
