@@ -1,7 +1,8 @@
 // speak-it - Text-to-Speech using Web Speech API + Google Cloud TTS
 
 // API Base URL: use backend proxy in production, direct API in development
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_URL ||
+  (window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'https://speak-it-api.onrender.com');
 
 class SpeakIt {
   constructor() {
