@@ -31,6 +31,7 @@ class SpeakIt {
       status: document.getElementById('status'),
       browserSupport: document.getElementById('browser-support'),
       audioPlayer: document.getElementById('audio-player'),
+      themeToggle: document.getElementById('theme-toggle'),
     };
 
     this.init();
@@ -58,6 +59,34 @@ class SpeakIt {
 
     // Initial voice list
     this.updateVoiceList();
+
+    // Initialize theme
+    this.initTheme();
+  }
+
+  // Theme management
+  initTheme() {
+    // Check for saved theme preference or system preference
+    const savedTheme = localStorage.getItem('speak-it-theme');
+    if (savedTheme) {
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+    // Default is dark (no attribute needed)
+  }
+
+  toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+    if (newTheme === 'dark') {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', newTheme);
+    }
+
+    localStorage.setItem('speak-it-theme', newTheme);
   }
 
   loadBrowserVoices() {
@@ -195,6 +224,9 @@ class SpeakIt {
 
     // Stop button
     this.elements.stopBtn.addEventListener('click', () => this.stop());
+
+    // Theme toggle
+    this.elements.themeToggle.addEventListener('click', () => this.toggleTheme());
   }
 
   async play() {
@@ -819,6 +851,15 @@ class SpeakIt {
 
     if (!this.isPaused) {
       this.elements.pauseBtn.textContent = '⏸ 一時停止';
+    }
+
+    // Update visual states for animations
+    if (this.isPlaying && !this.isPaused) {
+      document.body.classList.add('is-playing');
+      this.elements.playBtn.classList.add('is-playing');
+    } else {
+      document.body.classList.remove('is-playing');
+      this.elements.playBtn.classList.remove('is-playing');
     }
   }
 
