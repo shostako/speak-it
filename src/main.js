@@ -1,6 +1,7 @@
 // speak-it - Text-to-Speech using Web Speech API + Google Cloud TTS
 
-const GOOGLE_TTS_API_KEY = 'AIzaSyD1lBVQRnVrC36NZsZ95LNA1D__L-cNw8k';
+// API Base URL: use backend proxy in production, direct API in development
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 class SpeakIt {
   constructor() {
@@ -95,10 +96,13 @@ class SpeakIt {
 
   async loadGoogleVoices() {
     try {
-      const response = await fetch(
-        `https://texttospeech.googleapis.com/v1/voices?key=${GOOGLE_TTS_API_KEY}&languageCode=ja-JP`
-      );
+      const response = await fetch(`${API_BASE_URL}/api/voices`);
       const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
       if (data.voices) {
         this.googleVoices = data.voices.filter(v => v.languageCodes.includes('ja-JP'));
         this.showStatus('Google Cloud TTS 準備完了', 'success');
@@ -326,31 +330,21 @@ class SpeakIt {
     return chunks.filter(c => c.length > 0);
   }
 
-  // Call TTS API for a single chunk
+  // Call TTS API for a single chunk (via backend proxy)
   async callTTSAPI(text, voiceName, rate) {
-    const response = await fetch(
-      `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_TTS_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          input: { text },
-          voice: {
-            languageCode: 'ja-JP',
-            name: voiceName
-          },
-          audioConfig: {
-            audioEncoding: 'LINEAR16',
-            speakingRate: rate,
-            sampleRateHertz: 24000
-          }
-        })
-      }
-    );
+    const response = await fetch(`${API_BASE_URL}/api/synthesize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        voiceName,
+        speakingRate: rate
+      })
+    });
 
     const data = await response.json();
     if (data.error) {
-      throw new Error(data.error.message);
+      throw new Error(data.error);
     }
     return data.audioContent;
   }

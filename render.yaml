@@ -1,0 +1,37 @@
+# Render Blueprint for speak-it
+# https://render.com/docs/blueprint-spec
+
+services:
+  # Backend API (Web Service)
+  - type: web
+    name: speak-it-api
+    runtime: node
+    region: singapore
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: GOOGLE_TTS_API_KEY
+        sync: false  # Set manually in Render dashboard
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: speak-it
+          property: url
+
+  # Frontend (Static Site)
+  - type: web
+    name: speak-it
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=3600
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: speak-it-api
+          property: url
