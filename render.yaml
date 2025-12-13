@@ -7,6 +7,7 @@ services:
     name: speak-it-api
     runtime: node
     region: singapore
+    plan: free
     rootDir: server
     buildCommand: npm install
     startCommand: npm start
@@ -14,15 +15,13 @@ services:
       - key: GOOGLE_TTS_API_KEY
         sync: false  # Set manually in Render dashboard
       - key: FRONTEND_URL
-        fromService:
-          type: web
-          name: speak-it
-          property: url
+        sync: false  # Set manually: https://speak-it-xxxx.onrender.com
 
   # Frontend (Static Site)
   - type: web
     name: speak-it
     runtime: static
+    plan: free
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     headers:
@@ -31,7 +30,4 @@ services:
         value: public, max-age=3600
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: speak-it-api
-          property: url
+        sync: false  # Set manually: https://speak-it-api-xxxx.onrender.com
