@@ -538,23 +538,38 @@ footer {
 }
 
 /* ===== Responsive ===== */
-@media (max-width: 480px) {
+
+/* Tablet */
+@media (max-width: 768px) {
   .container {
-    padding: 1rem;
+    padding: 1.5rem 1rem;
   }
 
   .glass-card {
-    padding: 1.5rem;
-    border-radius: var(--radius-sm);
+    padding: 2rem;
+  }
+
+  header h1 {
+    font-size: 2.2rem;
+  }
+
+  textarea {
+    min-height: 180px;
+  }
+}
+
+/* Large phones / Small tablets */
+@media (max-width: 600px) {
+  .glass-card {
+    padding: 1.75rem;
   }
 
   header h1 {
     font-size: 2rem;
   }
 
-  .header-row {
-    flex-direction: column;
-    gap: 0.75rem;
+  .subtitle {
+    font-size: 0.95rem;
   }
 
   .buttons {
@@ -563,10 +578,82 @@ footer {
 
   .btn {
     width: 100%;
+    min-width: unset;
+  }
+}
+
+/* Phones */
+@media (max-width: 480px) {
+  .container {
+    padding: 0.75rem;
+  }
+
+  .glass-card {
+    padding: 1.5rem;
+    border-radius: var(--radius-sm);
+  }
+
+  header h1 {
+    font-size: 1.75rem;
+  }
+
+  .header-row {
+    gap: 0.75rem;
+  }
+
+  .subtitle {
+    font-size: 0.9rem;
+  }
+
+  .theme-toggle {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
   }
 
   textarea {
     min-height: 150px;
+    padding: 1rem;
+    font-size: 0.95rem;
+  }
+
+  .control-group label {
+    font-size: 0.85rem;
+  }
+
+  select {
+    padding: 0.65rem 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .btn {
+    padding: 0.875rem 1rem;
+    font-size: 0.95rem;
+  }
+
+  .status {
+    padding: 0.875rem 1rem;
+    font-size: 0.9rem;
+    min-height: 48px;
+  }
+}
+
+/* Very small phones */
+@media (max-width: 360px) {
+  .container {
+    padding: 0.5rem;
+  }
+
+  .glass-card {
+    padding: 1.25rem;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+  }
+
+  textarea {
+    min-height: 120px;
   }
 }
 
