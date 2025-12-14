@@ -213,15 +213,36 @@ header {
   margin-bottom: 0.5rem;
 }
 
+.title-icon {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 12px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
+}
+
+[data-theme="light"] .title-icon {
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
+}
+
 header h1 {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Cinzel', serif;
   font-size: 2.5rem;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  background: linear-gradient(180deg, #8b7cb5, #c4b5f7, #6b5a9c);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.5));
+}
+
+[data-theme="light"] header h1 {
+  background: linear-gradient(180deg, #5a4a8c, #8b7cb5, #3d2d6b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));
 }
 
 .subtitle {
@@ -490,13 +511,13 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .btn-download {
-  background: linear-gradient(135deg, #22c55e, #16a34a);
+  background: var(--btn-primary-bg);
   color: white;
-  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+  box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
 }
 
 .btn-download:not(:disabled):hover {
-  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4);
 }
 
 .btn-download:disabled {
