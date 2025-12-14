@@ -426,6 +426,7 @@ textarea:focus {
 
 .option-btn {
   padding: 0.5rem 0.85rem;
+  min-width: 3.5rem;
   background: var(--btn-secondary-bg);
   border: 1px solid var(--input-border);
   border-radius: var(--radius-sm);
@@ -434,6 +435,7 @@ textarea:focus {
   font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  text-align: center;
 }
 
 .option-btn:hover {
