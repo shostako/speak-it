@@ -195,7 +195,7 @@ class SpeakIt {
     result = result.replace(/~~([^~]+)~~/g, '$1');
 
     // 12. 数学記号を読み上げ文字に変換
-    result = result.replace(/[＝=]/g, 'イコール');
+    result = result.replace(/[＝=]/g, '、イコール、');
     result = result.replace(/[＋+]/g, 'プラス');
     result = result.replace(/[−\u2212\u2013\u2014]/g, 'マイナス'); // U+2212 MINUS, U+2013 EN DASH, U+2014 EM DASH
     result = result.replace(/[×✕]/g, 'かける');
