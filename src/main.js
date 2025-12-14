@@ -302,6 +302,17 @@ class SpeakIt {
     // 11. 取り消し線 ~~text~~ → textのみ
     result = result.replace(/~~([^~]+)~~/g, '$1');
 
+    // 12. 数学記号を読み上げ文字に変換
+    result = result.replace(/[＝=]/g, 'イコール');
+    result = result.replace(/[＋+]/g, 'プラス');
+    result = result.replace(/[−\u2212\u2013\u2014]/g, 'マイナス'); // U+2212 MINUS, U+2013 EN DASH, U+2014 EM DASH
+    result = result.replace(/[×✕]/g, 'かける');
+    result = result.replace(/÷/g, 'わる');
+
+    // 13. 改行での休止（句読点がない行末に読点を追加）
+    // 空行は維持しつつ、文末に句読点がない単一改行を読点+改行に変換
+    result = result.replace(/([^。！？\n])\n(?!\n)/g, '$1、\n');
+
     // 連続する空行を1つに
     result = result.replace(/\n{3,}/g, '\n\n');
 
