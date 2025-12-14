@@ -16,7 +16,6 @@ class SpeakIt {
     this.audioQueue = [];
     this.currentAudioIndex = 0;
     this.isStopped = false;
-    this.currentEngine = 'google'; // 'browser' or 'google'
 
     // Audio cache for replay without API call
     this.cachedAudioData = null;    // Float32Array for Google TTS
@@ -24,20 +23,23 @@ class SpeakIt {
     this.cachedVoice = '';          // Voice used to generate cached audio
     this.cachedRate = 1.0;          // Rate used to generate cached audio
 
+    // 音声設定（固定）
+    this.voiceMap = {
+      female: 'ja-JP-Neural2-B',  // 女声
+      male: 'ja-JP-Neural2-C'     // 男声
+    };
+    this.selectedVoice = 'female';
+    this.selectedRate = 1.2;
+
     this.elements = {
       textInput: document.getElementById('text-input'),
       charCount: document.getElementById('char-count'),
-      engineSelect: document.getElementById('engine-select'),
-      voiceSelect: document.getElementById('voice-select'),
-      rateSlider: document.getElementById('rate-slider'),
-      rateValue: document.getElementById('rate-value'),
-      volumeSlider: document.getElementById('volume-slider'),
-      volumeValue: document.getElementById('volume-value'),
+      voiceGroup: document.getElementById('voice-group'),
+      rateGroup: document.getElementById('rate-group'),
       playBtn: document.getElementById('play-btn'),
       pauseBtn: document.getElementById('pause-btn'),
       stopBtn: document.getElementById('stop-btn'),
       status: document.getElementById('status'),
-      browserSupport: document.getElementById('browser-support'),
       audioPlayer: document.getElementById('audio-player'),
       themeToggle: document.getElementById('theme-toggle'),
       downloadBtn: document.getElementById('download-btn'),
@@ -48,30 +50,23 @@ class SpeakIt {
   }
 
   async init() {
-    // Check browser support
-    if (!this.synth) {
-      this.elements.browserSupport.textContent = 'ブラウザ音声: 非対応';
-    } else {
-      this.elements.browserSupport.textContent = 'ブラウザ音声: 対応';
-    }
-
-    // Load browser voices
-    this.loadBrowserVoices();
-    if (speechSynthesis.onvoiceschanged !== undefined) {
-      speechSynthesis.onvoiceschanged = () => this.loadBrowserVoices();
-    }
-
-    // Load Google voices
-    await this.loadGoogleVoices();
-
     // Event listeners
     this.setupEventListeners();
 
-    // Initial voice list
-    this.updateVoiceList();
-
     // Initialize theme
     this.initTheme();
+
+    // Check API availability
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/voices`);
+      if (response.ok) {
+        this.showStatus('準備完了', 'success');
+      } else {
+        this.showStatus('API接続エラー', 'error');
+      }
+    } catch (error) {
+      this.showStatus('API接続エラー', 'error');
+    }
   }
 
   // Theme management
@@ -99,109 +94,6 @@ class SpeakIt {
     localStorage.setItem('speak-it-theme', newTheme);
   }
 
-  loadBrowserVoices() {
-    this.voices = this.synth.getVoices();
-  }
-
-  async loadGoogleVoices() {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/voices`);
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      if (data.voices) {
-        this.googleVoices = data.voices.filter(v => v.languageCodes.includes('ja-JP'));
-        this.showStatus('Google Cloud TTS 準備完了', 'success');
-      }
-    } catch (error) {
-      console.error('Failed to load Google voices:', error);
-      this.showStatus('Google TTS の読み込みに失敗', 'error');
-    }
-  }
-
-  updateVoiceList() {
-    const select = this.elements.voiceSelect;
-    select.innerHTML = '';
-
-    if (this.currentEngine === 'google') {
-      // Google Cloud TTS voices
-      const voiceTypes = {
-        'Studio': [],
-        'Neural2': [],
-        'WaveNet': [],
-        'Standard': []
-      };
-
-      this.googleVoices.forEach(voice => {
-        const type = Object.keys(voiceTypes).find(t => voice.name.includes(t)) || 'Standard';
-        voiceTypes[type].push(voice);
-      });
-
-      Object.entries(voiceTypes).forEach(([type, voices]) => {
-        if (voices.length === 0) return;
-        const group = document.createElement('optgroup');
-        group.label = `${type} (${this.getVoiceTypeDesc(type)})`;
-        voices.forEach(voice => {
-          const option = document.createElement('option');
-          option.value = voice.name;
-          const gender = voice.ssmlGender === 'FEMALE' ? '女性' : '男性';
-          option.textContent = `${voice.name.split('-').pop()} - ${gender}`;
-          group.appendChild(option);
-        });
-        select.appendChild(group);
-      });
-
-      // Default to first Neural2 or WaveNet
-      const defaultVoice = this.googleVoices.find(v => v.name.includes('Neural2'))
-        || this.googleVoices.find(v => v.name.includes('WaveNet'))
-        || this.googleVoices[0];
-      if (defaultVoice) {
-        select.value = defaultVoice.name;
-      }
-
-    } else {
-      // Browser voices
-      const jaVoices = this.voices.filter(v => v.lang.startsWith('ja'));
-      const enVoices = this.voices.filter(v => v.lang.startsWith('en'));
-
-      const addOptions = (voices, groupLabel) => {
-        if (voices.length === 0) return;
-        const group = document.createElement('optgroup');
-        group.label = groupLabel;
-        voices.forEach(voice => {
-          const option = document.createElement('option');
-          option.value = this.voices.indexOf(voice);
-          option.textContent = `${voice.name} (${voice.lang})`;
-          group.appendChild(option);
-        });
-        select.appendChild(group);
-      };
-
-      addOptions(jaVoices, '日本語');
-      addOptions(enVoices, '英語');
-
-      const googleJa = jaVoices.find(v => v.name.includes('Google') && v.lang === 'ja-JP');
-      if (googleJa) {
-        select.value = this.voices.indexOf(googleJa);
-      } else if (jaVoices.length > 0) {
-        select.value = this.voices.indexOf(jaVoices[0]);
-      }
-    }
-  }
-
-  getVoiceTypeDesc(type) {
-    const descs = {
-      'Studio': '最高品質',
-      'Neural2': '高品質',
-      'WaveNet': '自然',
-      'Standard': '標準'
-    };
-    return descs[type] || '';
-  }
-
   setupEventListeners() {
     // Text input
     this.elements.textInput.addEventListener('input', () => {
@@ -209,26 +101,26 @@ class SpeakIt {
       this.updateClearButtonVisibility();
     });
 
-    // Engine select
-    this.elements.engineSelect.addEventListener('change', (e) => {
-      this.currentEngine = e.target.value;
-      this.updateVoiceList();
-      this.stop();
-      this.clearCache(); // Clear cache when engine changes
+    // Voice selection buttons
+    this.elements.voiceGroup.addEventListener('click', (e) => {
+      const btn = e.target.closest('.option-btn');
+      if (!btn) return;
+
+      this.elements.voiceGroup.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      this.selectedVoice = btn.dataset.voice;
+      this.clearCache(); // Clear cache when voice changes
     });
 
-    // Rate slider (速度は次の再生から反映、再生中の変更は音程が変わるため無効)
-    this.elements.rateSlider.addEventListener('input', (e) => {
-      this.elements.rateValue.textContent = e.target.value;
-    });
+    // Rate selection buttons
+    this.elements.rateGroup.addEventListener('click', (e) => {
+      const btn = e.target.closest('.option-btn');
+      if (!btn) return;
 
-    // Volume slider
-    this.elements.volumeSlider.addEventListener('input', (e) => {
-      this.elements.volumeValue.textContent = Math.round(e.target.value * 100);
-      // Update volume in real-time via GainNode
-      if (this.gainNode && this.isPlaying) {
-        this.gainNode.gain.value = parseFloat(e.target.value);
-      }
+      this.elements.rateGroup.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      this.selectedRate = parseFloat(btn.dataset.rate);
+      this.clearCache(); // Clear cache when rate changes
     });
 
     // Play button
@@ -346,25 +238,21 @@ class SpeakIt {
     // Stop current playback but keep cache
     this.stopPlayback();
 
-    if (this.currentEngine === 'google') {
-      const voiceName = this.elements.voiceSelect.value;
-      const rate = parseFloat(this.elements.rateSlider.value);
-      const volume = parseFloat(this.elements.volumeSlider.value);
+    const voiceName = this.voiceMap[this.selectedVoice];
+    const rate = this.selectedRate;
+    const volume = 1.0;
 
-      // Check if we can use cached audio
-      if (this.cachedAudioData &&
-          this.cachedText === text &&
-          this.cachedVoice === voiceName &&
-          this.cachedRate === rate) {
-        this.showStatus('キャッシュから再生...', 'info');
-        this.playFromCache(volume);
-        return;
-      }
-
-      await this.playWithGoogle(text);
-    } else {
-      this.playWithBrowser(text);
+    // Check if we can use cached audio
+    if (this.cachedAudioData &&
+        this.cachedText === text &&
+        this.cachedVoice === voiceName &&
+        this.cachedRate === rate) {
+      this.showStatus('キャッシュから再生...', 'info');
+      this.playFromCache(volume);
+      return;
     }
+
+    await this.playWithGoogle(text);
   }
 
   // Play from cached audio data
@@ -376,31 +264,26 @@ class SpeakIt {
   // Stop playback without clearing cache
   stopPlayback() {
     this.isStopped = true;
-    if (this.currentEngine === 'google') {
-      if (this.scheduledSources) {
-        for (const source of this.scheduledSources) {
-          try {
-            source.stop();
-          } catch (e) {
-            // Already stopped
-          }
-        }
-        this.scheduledSources = [];
-      }
-      if (this.audioSource) {
+    if (this.scheduledSources) {
+      for (const source of this.scheduledSources) {
         try {
-          this.audioSource.stop();
+          source.stop();
         } catch (e) {
           // Already stopped
         }
-        this.audioSource = null;
       }
-      // Note: audioQueue is for streaming, not caching
-      this.audioQueue = [];
-      this.currentAudioIndex = 0;
-    } else {
-      this.synth.cancel();
+      this.scheduledSources = [];
     }
+    if (this.audioSource) {
+      try {
+        this.audioSource.stop();
+      } catch (e) {
+        // Already stopped
+      }
+      this.audioSource = null;
+    }
+    this.audioQueue = [];
+    this.currentAudioIndex = 0;
     this.isPlaying = false;
     this.isPaused = false;
     this.updateButtons();
@@ -628,17 +511,11 @@ class SpeakIt {
       return;
     }
 
-    // Only Google TTS supports download
-    if (this.currentEngine !== 'google') {
-      this.showStatus('ダウンロードはGoogle Cloud TTSのみ対応', 'warning');
-      return;
-    }
-
     // Strip markdown
     text = this.stripMarkdown(text);
 
-    const voiceName = this.elements.voiceSelect.value;
-    const rate = parseFloat(this.elements.rateSlider.value);
+    const voiceName = this.voiceMap[this.selectedVoice];
+    const rate = this.selectedRate;
 
     // Disable button during processing
     this.elements.downloadBtn.disabled = true;
@@ -700,9 +577,9 @@ class SpeakIt {
   }
 
   async playWithGoogle(text) {
-    const voiceName = this.elements.voiceSelect.value;
-    const rate = parseFloat(this.elements.rateSlider.value);
-    const volume = parseFloat(this.elements.volumeSlider.value);
+    const voiceName = this.voiceMap[this.selectedVoice];
+    const rate = this.selectedRate;
+    const volume = 1.0;
 
     this.isStopped = false;
     const textBytes = this.getByteLength(text);
@@ -1039,13 +916,13 @@ class SpeakIt {
   playWithBrowser(text) {
     this.utterance = new SpeechSynthesisUtterance(text);
 
-    const voiceIndex = this.elements.voiceSelect.value;
+    const voiceIndex = this.voiceMap[this.selectedVoice];
     if (voiceIndex && this.voices[voiceIndex]) {
       this.utterance.voice = this.voices[voiceIndex];
     }
 
-    this.utterance.rate = parseFloat(this.elements.rateSlider.value);
-    this.utterance.volume = parseFloat(this.elements.volumeSlider.value);
+    this.utterance.rate = this.selectedRate;
+    this.utterance.volume = 1.0;
 
     this.utterance.onstart = () => {
       this.isPlaying = true;
@@ -1072,29 +949,15 @@ class SpeakIt {
   }
 
   async togglePause() {
-    if (this.currentEngine === 'google') {
-      // Use AudioContext suspend/resume for pause functionality
-      if (this.audioContext) {
-        if (this.isPaused) {
-          await this.audioContext.resume();
-          this.isPaused = false;
-          this.elements.pauseBtn.textContent = '⏸ 一時停止';
-          this.showStatus('読み上げ中...', 'info');
-        } else {
-          await this.audioContext.suspend();
-          this.isPaused = true;
-          this.elements.pauseBtn.textContent = '▶ 再開';
-          this.showStatus('一時停止中', 'info');
-        }
-      }
-    } else {
+    // Use AudioContext suspend/resume for pause functionality
+    if (this.audioContext) {
       if (this.isPaused) {
-        this.synth.resume();
+        await this.audioContext.resume();
         this.isPaused = false;
         this.elements.pauseBtn.textContent = '⏸ 一時停止';
         this.showStatus('読み上げ中...', 'info');
       } else {
-        this.synth.pause();
+        await this.audioContext.suspend();
         this.isPaused = true;
         this.elements.pauseBtn.textContent = '▶ 再開';
         this.showStatus('一時停止中', 'info');
