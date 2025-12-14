@@ -60,11 +60,14 @@ app.get('/api/voices', async (req, res) => {
 // Synthesize speech
 app.post('/api/synthesize', async (req, res) => {
   try {
-    const { text, voiceName, speakingRate = 1.0 } = req.body;
+    const { text, ssml, voiceName, speakingRate = 1.0 } = req.body;
 
-    if (!text || !voiceName) {
-      return res.status(400).json({ error: 'text and voiceName are required' });
+    if ((!text && !ssml) || !voiceName) {
+      return res.status(400).json({ error: 'text or ssml, and voiceName are required' });
     }
+
+    // SSMLが提供された場合はSSMLを使用、なければtextを使用
+    const input = ssml ? { ssml } : { text };
 
     const response = await fetch(
       `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_TTS_API_KEY}`,
@@ -72,7 +75,7 @@ app.post('/api/synthesize', async (req, res) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          input: { text },
+          input,
           voice: {
             languageCode: 'ja-JP',
             name: voiceName

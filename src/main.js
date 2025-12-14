@@ -309,14 +309,28 @@ class SpeakIt {
     result = result.replace(/[×✕]/g, 'かける');
     result = result.replace(/÷/g, 'わる');
 
-    // 13. 改行での休止（句読点がない行末に読点を追加）
-    // 空行は維持しつつ、文末に句読点がない単一改行を読点+改行に変換
-    result = result.replace(/([^。！？\n])\n(?!\n)/g, '$1、\n');
-
     // 連続する空行を1つに
     result = result.replace(/\n{3,}/g, '\n\n');
 
     return result.trim();
+  }
+
+  // テキストをSSML形式に変換（改行で休止を入れる）
+  textToSSML(text) {
+    // XMLの特殊文字をエスケープ
+    let escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+
+    // 改行を休止タグに変換
+    // 空行（段落区切り）は長めの休止、単一改行は短めの休止
+    escaped = escaped.replace(/\n\n+/g, '<break time="500ms"/>');
+    escaped = escaped.replace(/\n/g, '<break time="300ms"/>');
+
+    return `<speak>${escaped}</speak>`;
   }
 
   async play() {
@@ -475,11 +489,14 @@ class SpeakIt {
 
   // Call TTS API for a single chunk (via backend proxy)
   async callTTSAPI(text, voiceName, rate) {
+    // SSML形式に変換して送信
+    const ssml = this.textToSSML(text);
+
     const response = await fetch(`${API_BASE_URL}/api/synthesize`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        text,
+        ssml,
         voiceName,
         speakingRate: rate
       })
