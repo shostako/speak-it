@@ -234,12 +234,63 @@ class SpeakIt {
     this.elements.themeToggle.addEventListener('click', () => this.toggleTheme());
   }
 
+  // マークダウン記号を除去
+  stripMarkdown(text) {
+    let result = text;
+
+    // 1. コードブロック ```...``` → 中身のみ
+    result = result.replace(/```[\s\S]*?```/g, (match) => {
+      return match.slice(3, -3).replace(/^\w+\n/, ''); // 言語指定も除去
+    });
+
+    // 2. インラインコード `...` → 中身のみ
+    result = result.replace(/`([^`]+)`/g, '$1');
+
+    // 3. 画像 ![alt](url) → 除去
+    result = result.replace(/!\[([^\]]*)\]\([^)]+\)/g, '');
+
+    // 4. リンク [text](url) → textのみ
+    result = result.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+
+    // 5. 太字 **text** or __text__ → textのみ
+    result = result.replace(/\*\*([^*]+)\*\*/g, '$1');
+    result = result.replace(/__([^_]+)__/g, '$1');
+
+    // 6. 斜体 *text* or _text_ → textのみ（単語境界を考慮）
+    result = result.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1');
+    result = result.replace(/(?<!_)_([^_]+)_(?!_)/g, '$1');
+
+    // 7. ヘッダー # 〜 ###### （行頭）
+    result = result.replace(/^#{1,6}\s+/gm, '');
+
+    // 8. リストマーカー - * + 1. （行頭）
+    result = result.replace(/^[\s]*[-*+]\s+/gm, '');
+    result = result.replace(/^[\s]*\d+\.\s+/gm, '');
+
+    // 9. 引用 > （行頭）
+    result = result.replace(/^>\s*/gm, '');
+
+    // 10. 水平線 --- *** ___
+    result = result.replace(/^[-*_]{3,}\s*$/gm, '');
+
+    // 11. 取り消し線 ~~text~~ → textのみ
+    result = result.replace(/~~([^~]+)~~/g, '$1');
+
+    // 連続する空行を1つに
+    result = result.replace(/\n{3,}/g, '\n\n');
+
+    return result.trim();
+  }
+
   async play() {
-    const text = this.elements.textInput.value.trim();
+    let text = this.elements.textInput.value.trim();
     if (!text) {
       this.showStatus('テキストを入力してください', 'warning');
       return;
     }
+
+    // マークダウン記号を除去
+    text = this.stripMarkdown(text);
 
     this.stop();
 
