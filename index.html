@@ -39,11 +39,14 @@
 
     <main>
       <div class="input-section">
-        <textarea
-          id="text-input"
-          placeholder="ここにテキストを貼り付けてください..."
-          rows="10"
-        ></textarea>
+        <div class="textarea-wrapper">
+          <textarea
+            id="text-input"
+            placeholder="ここにテキストを貼り付けてください..."
+            rows="10"
+          ></textarea>
+          <button id="clear-btn" class="clear-btn" aria-label="クリア" type="button">✕</button>
+        </div>
         <div class="char-count">
           <span id="char-count">0</span> 文字
         </div>
@@ -64,8 +67,8 @@
         </div>
 
         <div class="control-group">
-          <label for="rate-slider">速度: <span id="rate-value">1.0</span>x</label>
-          <input type="range" id="rate-slider" min="0.5" max="2" step="0.1" value="1">
+          <label for="rate-slider">速度: <span id="rate-value">1.2</span>x</label>
+          <input type="range" id="rate-slider" min="0.5" max="2" step="0.1" value="1.2">
         </div>
 
         <div class="control-group">

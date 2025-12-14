@@ -18,6 +18,12 @@ class SpeakIt {
     this.isStopped = false;
     this.currentEngine = 'google'; // 'browser' or 'google'
 
+    // Audio cache for replay without API call
+    this.cachedAudioData = null;    // Float32Array for Google TTS
+    this.cachedText = '';           // Text used to generate cached audio
+    this.cachedVoice = '';          // Voice used to generate cached audio
+    this.cachedRate = 1.0;          // Rate used to generate cached audio
+
     this.elements = {
       textInput: document.getElementById('text-input'),
       charCount: document.getElementById('char-count'),
@@ -35,6 +41,7 @@ class SpeakIt {
       audioPlayer: document.getElementById('audio-player'),
       themeToggle: document.getElementById('theme-toggle'),
       downloadBtn: document.getElementById('download-btn'),
+      clearBtn: document.getElementById('clear-btn'),
     };
 
     this.init();
@@ -199,6 +206,7 @@ class SpeakIt {
     // Text input
     this.elements.textInput.addEventListener('input', () => {
       this.elements.charCount.textContent = this.elements.textInput.value.length;
+      this.updateClearButtonVisibility();
     });
 
     // Engine select
@@ -206,6 +214,7 @@ class SpeakIt {
       this.currentEngine = e.target.value;
       this.updateVoiceList();
       this.stop();
+      this.clearCache(); // Clear cache when engine changes
     });
 
     // Rate slider (速度は次の再生から反映、再生中の変更は音程が変わるため無効)
@@ -236,6 +245,14 @@ class SpeakIt {
 
     // Download button
     this.elements.downloadBtn.addEventListener('click', () => this.download());
+
+    // Clear button
+    if (this.elements.clearBtn) {
+      this.elements.clearBtn.addEventListener('click', () => this.clearAll());
+    }
+
+    // Initialize clear button visibility
+    this.updateClearButtonVisibility();
   }
 
   // マークダウン記号を除去
@@ -301,13 +318,67 @@ class SpeakIt {
     // マークダウン記号を除去
     text = this.stripMarkdown(text);
 
-    this.stop();
+    // Stop current playback but keep cache
+    this.stopPlayback();
 
     if (this.currentEngine === 'google') {
+      const voiceName = this.elements.voiceSelect.value;
+      const rate = parseFloat(this.elements.rateSlider.value);
+      const volume = parseFloat(this.elements.volumeSlider.value);
+
+      // Check if we can use cached audio
+      if (this.cachedAudioData &&
+          this.cachedText === text &&
+          this.cachedVoice === voiceName &&
+          this.cachedRate === rate) {
+        this.showStatus('キャッシュから再生...', 'info');
+        this.playFromCache(volume);
+        return;
+      }
+
       await this.playWithGoogle(text);
     } else {
       this.playWithBrowser(text);
     }
+  }
+
+  // Play from cached audio data
+  playFromCache(volume) {
+    this.isStopped = false;
+    this.playConcatenatedAudio(this.cachedAudioData, volume);
+  }
+
+  // Stop playback without clearing cache
+  stopPlayback() {
+    this.isStopped = true;
+    if (this.currentEngine === 'google') {
+      if (this.scheduledSources) {
+        for (const source of this.scheduledSources) {
+          try {
+            source.stop();
+          } catch (e) {
+            // Already stopped
+          }
+        }
+        this.scheduledSources = [];
+      }
+      if (this.audioSource) {
+        try {
+          this.audioSource.stop();
+        } catch (e) {
+          // Already stopped
+        }
+        this.audioSource = null;
+      }
+      // Note: audioQueue is for streaming, not caching
+      this.audioQueue = [];
+      this.currentAudioIndex = 0;
+    } else {
+      this.synth.cancel();
+    }
+    this.isPlaying = false;
+    this.isPaused = false;
+    this.updateButtons();
   }
 
   // Get byte length of text in UTF-8
@@ -609,43 +680,53 @@ class SpeakIt {
     const textBytes = this.getByteLength(text);
 
     try {
-      // Short text: single API call (existing behavior)
+      let float32Array;
+
+      // Short text: single API call
       if (textBytes <= 4500) {
         this.showStatus('音声を生成中...', 'info');
         const audioContent = await this.callTTSAPI(text, voiceName, rate);
         if (this.isStopped) return;
-        this.playSingleAudio(audioContent, volume);
-        return;
+        float32Array = this.base64ToFloat32Array(audioContent);
+      } else {
+        // Long text: split, generate in parallel, concatenate
+        const chunks = this.splitTextForTTS(text);
+        console.log(`Long text: ${textBytes} bytes, split into ${chunks.length} chunks`);
+
+        this.showStatus(`音声を生成中... (0/${chunks.length})`, 'info');
+
+        // Generate all chunks in parallel
+        const audioDataList = await this.generateAllChunks(
+          chunks,
+          voiceName,
+          rate,
+          (completed, total) => {
+            if (!this.isStopped) {
+              this.showStatus(`音声を生成中... (${completed}/${total})`, 'info');
+            }
+          }
+        );
+
+        if (this.isStopped) return;
+
+        // Concatenate all audio into single buffer
+        this.showStatus('音声を結合中...', 'info');
+        float32Array = this.concatenateAudioBuffers(audioDataList);
       }
 
-      // Long text: split, generate in parallel, concatenate, play
-      const chunks = this.splitTextForTTS(text);
-      console.log(`Long text: ${textBytes} bytes, split into ${chunks.length} chunks`);
-
-      this.showStatus(`音声を生成中... (0/${chunks.length})`, 'info');
-
-      // Generate all chunks in parallel
-      const audioDataList = await this.generateAllChunks(
-        chunks,
-        voiceName,
-        rate,
-        (completed, total) => {
-          if (!this.isStopped) {
-            this.showStatus(`音声を生成中... (${completed}/${total})`, 'info');
-          }
-        }
-      );
-
       if (this.isStopped) return;
 
-      // Concatenate all audio into single buffer
-      this.showStatus('音声を結合中...', 'info');
-      const concatenatedAudio = this.concatenateAudioBuffers(audioDataList);
+      // Apply fade-in
+      this.applyFadeIn(float32Array, 1200);
 
-      if (this.isStopped) return;
+      // Cache the audio data
+      this.cachedAudioData = float32Array;
+      this.cachedText = text;
+      this.cachedVoice = voiceName;
+      this.cachedRate = rate;
 
-      // Play concatenated audio
-      this.playConcatenatedAudio(concatenatedAudio, volume);
+      // Play the audio
+      this.playConcatenatedAudio(float32Array, volume);
 
     } catch (error) {
       console.error('Google TTS error:', error);
@@ -994,35 +1075,35 @@ class SpeakIt {
   }
 
   stop() {
-    this.isStopped = true;
-    if (this.currentEngine === 'google') {
-      // Stop all scheduled sources
-      if (this.scheduledSources) {
-        for (const source of this.scheduledSources) {
-          try {
-            source.stop();
-          } catch (e) {
-            // Already stopped
-          }
-        }
-        this.scheduledSources = [];
-      }
-      if (this.audioSource) {
-        try {
-          this.audioSource.stop();
-        } catch (e) {
-          // Already stopped
-        }
-        this.audioSource = null;
-      }
-      this.audioQueue = [];
-      this.currentAudioIndex = 0;
-    } else {
-      this.synth.cancel();
+    // Stop playback but keep cache (can replay with play button)
+    this.stopPlayback();
+  }
+
+  // Clear cached audio data
+  clearCache() {
+    this.cachedAudioData = null;
+    this.cachedText = '';
+    this.cachedVoice = '';
+    this.cachedRate = 1.0;
+  }
+
+  // Clear all: text, audio cache, and reset state
+  clearAll() {
+    this.stopPlayback();
+    this.clearCache();
+    this.elements.textInput.value = '';
+    this.elements.charCount.textContent = '0';
+    this.updateClearButtonVisibility();
+    this.elements.textInput.focus();
+    this.showStatus('', 'info');
+  }
+
+  // Update clear button visibility based on text content
+  updateClearButtonVisibility() {
+    if (this.elements.clearBtn) {
+      const hasText = this.elements.textInput.value.length > 0;
+      this.elements.clearBtn.style.display = hasText ? 'flex' : 'none';
     }
-    this.isPlaying = false;
-    this.isPaused = false;
-    this.updateButtons();
   }
 
   updateButtons() {
