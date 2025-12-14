@@ -260,8 +260,8 @@ class SpeakIt {
     result = result.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1');
     result = result.replace(/(?<!_)_([^_]+)_(?!_)/g, '$1');
 
-    // 7. ヘッダー # 〜 ###### （行頭）
-    result = result.replace(/^#{1,6}\s+/gm, '');
+    // 7. ヘッダー # 〜 ###### （行頭、スペースなしも対応）
+    result = result.replace(/^[\s]*#{1,6}\s*/gm, '');
 
     // 8. リストマーカー - * + 1. （行頭）
     result = result.replace(/^[\s]*[-*+]\s+/gm, '');
