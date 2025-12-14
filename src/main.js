@@ -252,6 +252,12 @@ class SpeakIt {
     // 4. リンク [text](url) → textのみ
     result = result.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
 
+    // 4.5. YouTubeタイムスタンプ [HH:MM:SS] or [MM:SS] → 除去
+    result = result.replace(/\[\d{1,2}:\d{2}(:\d{2})?\]/g, '');
+
+    // 4.6. 区切り記号 : ; （半角・全角）→ 読点に変換（1拍開ける）
+    result = result.replace(/[:;：；]/g, '、');
+
     // 5. 太字 **text** or __text__ → textのみ
     result = result.replace(/\*\*([^*]+)\*\*/g, '$1');
     result = result.replace(/__([^_]+)__/g, '$1');
