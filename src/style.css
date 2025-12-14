@@ -489,6 +489,22 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
 }
 
+.btn-download {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+}
+
+.btn-download:not(:disabled):hover {
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+}
+
+.btn-download:disabled {
+  background: var(--btn-secondary-bg);
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
 /* ===== Status ===== */
 .status {
   margin-top: 1.5rem;

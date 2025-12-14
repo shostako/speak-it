@@ -34,6 +34,7 @@ class SpeakIt {
       browserSupport: document.getElementById('browser-support'),
       audioPlayer: document.getElementById('audio-player'),
       themeToggle: document.getElementById('theme-toggle'),
+      downloadBtn: document.getElementById('download-btn'),
     };
 
     this.init();
@@ -232,6 +233,9 @@ class SpeakIt {
 
     // Theme toggle
     this.elements.themeToggle.addEventListener('click', () => this.toggleTheme());
+
+    // Download button
+    this.elements.downloadBtn.addEventListener('click', () => this.download());
   }
 
   // マークダウン記号を除去
@@ -467,6 +471,132 @@ class SpeakIt {
     const samples = Math.min(fadeInSamples, float32Array.length);
     for (let i = 0; i < samples; i++) {
       float32Array[i] *= i / samples;
+    }
+  }
+
+  // Convert Float32Array to WAV file Blob
+  float32ArrayToWav(float32Array, sampleRate = 24000) {
+    const numChannels = 1;
+    const bitsPerSample = 16;
+    const bytesPerSample = bitsPerSample / 8;
+    const blockAlign = numChannels * bytesPerSample;
+    const byteRate = sampleRate * blockAlign;
+    const dataSize = float32Array.length * bytesPerSample;
+    const headerSize = 44;
+    const totalSize = headerSize + dataSize;
+
+    const buffer = new ArrayBuffer(totalSize);
+    const view = new DataView(buffer);
+
+    // WAV header
+    const writeString = (offset, str) => {
+      for (let i = 0; i < str.length; i++) {
+        view.setUint8(offset + i, str.charCodeAt(i));
+      }
+    };
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, totalSize - 8, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true); // fmt chunk size
+    view.setUint16(20, 1, true);  // PCM format
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitsPerSample, true);
+    writeString(36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    // Convert Float32 to Int16 and write
+    let offset = 44;
+    for (let i = 0; i < float32Array.length; i++) {
+      const sample = Math.max(-1, Math.min(1, float32Array[i]));
+      const int16 = sample < 0 ? sample * 32768 : sample * 32767;
+      view.setInt16(offset, int16, true);
+      offset += 2;
+    }
+
+    return new Blob([buffer], { type: 'audio/wav' });
+  }
+
+  // Download audio as WAV file
+  async download() {
+    let text = this.elements.textInput.value.trim();
+    if (!text) {
+      this.showStatus('テキストを入力してください', 'warning');
+      return;
+    }
+
+    // Only Google TTS supports download
+    if (this.currentEngine !== 'google') {
+      this.showStatus('ダウンロードはGoogle Cloud TTSのみ対応', 'warning');
+      return;
+    }
+
+    // Strip markdown
+    text = this.stripMarkdown(text);
+
+    const voiceName = this.elements.voiceSelect.value;
+    const rate = parseFloat(this.elements.rateSlider.value);
+
+    // Disable button during processing
+    this.elements.downloadBtn.disabled = true;
+    const originalText = this.elements.downloadBtn.textContent;
+    this.elements.downloadBtn.textContent = '生成中...';
+
+    try {
+      const textBytes = this.getByteLength(text);
+      let float32Array;
+
+      if (textBytes <= 4500) {
+        // Short text
+        this.showStatus('音声を生成中...', 'info');
+        const audioContent = await this.callTTSAPI(text, voiceName, rate);
+        float32Array = this.base64ToFloat32Array(audioContent);
+      } else {
+        // Long text - split and concatenate
+        const chunks = this.splitTextForTTS(text);
+        this.showStatus(`音声を生成中... (0/${chunks.length})`, 'info');
+
+        const audioDataList = await this.generateAllChunks(
+          chunks,
+          voiceName,
+          rate,
+          (completed, total) => {
+            this.showStatus(`音声を生成中... (${completed}/${total})`, 'info');
+          }
+        );
+
+        this.showStatus('音声を結合中...', 'info');
+        float32Array = this.concatenateAudioBuffers(audioDataList);
+      }
+
+      // Apply fade-in
+      this.applyFadeIn(float32Array, 1200);
+
+      // Convert to WAV
+      const wavBlob = this.float32ArrayToWav(float32Array);
+
+      // Trigger download
+      const url = URL.createObjectURL(wavBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `speak-it-${Date.now()}.wav`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      this.showStatus('ダウンロード完了', 'success');
+
+    } catch (error) {
+      console.error('Download error:', error);
+      this.showStatus(`エラー: ${error.message}`, 'error');
+    } finally {
+      this.elements.downloadBtn.disabled = false;
+      this.elements.downloadBtn.textContent = originalText;
     }
   }
 
