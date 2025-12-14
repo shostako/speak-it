@@ -263,9 +263,8 @@ class SpeakIt {
     // 7. ヘッダー # 〜 ###### （行頭、スペースなしも対応）
     result = result.replace(/^[\s]*#{1,6}\s*/gm, '');
 
-    // 8. リストマーカー - * + 1. （行頭）
+    // 8. リストマーカー - * + （行頭）※番号付きリストは章番号と区別できないため除外
     result = result.replace(/^[\s]*[-*+]\s+/gm, '');
-    result = result.replace(/^[\s]*\d+\.\s+/gm, '');
 
     // 9. 引用 > （行頭）
     result = result.replace(/^>\s*/gm, '');
