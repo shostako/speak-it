@@ -238,6 +238,10 @@ class SpeakIt {
     // Stop current playback but keep cache
     this.stopPlayback();
 
+    // AudioContextをユーザージェスチャー内で即座に作成/resumeする
+    // （awaitの後ではブラウザの自動再生ポリシーでブロックされるため）
+    await this.ensureAudioContext();
+
     const voiceName = this.voiceMap[this.selectedVoice];
     const rate = this.selectedRate;
     const volume = 1.0;
@@ -253,6 +257,16 @@ class SpeakIt {
     }
 
     await this.playWithGoogle(text);
+  }
+
+  // AudioContextをユーザージェスチャーコンテキスト内で確保する
+  async ensureAudioContext() {
+    if (!this.audioContext) {
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+    }
   }
 
   // Play from cached audio data
