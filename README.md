@@ -19,8 +19,8 @@
 ## 手元で動かす
 
 ```bash
-# API
-cd server && npm install && npm start
+# API（初回は .env.example を写して、GOOGLE_TTS_API_KEY を書く）
+cd server && cp .env.example .env && npm install && npm run dev
 # 画面（別の端末）
 npm install && npm run dev
 ```
